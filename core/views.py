@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.exceptions import ShortCodeExhausted
+from core.exceptions import ShortCodeAllocationFailed
 from core.models import ShortURL
 from core.serializers import ShortenRequestSerializer
 from core.services import resolve, shorten
@@ -33,9 +33,9 @@ class ShortenView(APIView):
 
         try:
             short_url = shorten(url)
-        except ShortCodeExhausted:
+        except ShortCodeAllocationFailed:
             return Response(
-                {'detail': 'No short codes are available right now. Please try again shortly.'},
+                {'detail': 'Could not allocate a short code. Please try again shortly.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
