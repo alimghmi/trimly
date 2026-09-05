@@ -1,10 +1,11 @@
 from unittest import mock
 
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework.throttling import AnonRateThrottle
 
+from core.exceptions import ShortCodeAllocationFailed
 from core.models import ShortURL
 from core.services import shorten
 
@@ -40,12 +41,8 @@ class ShortenViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('url', response.json())
 
-    @override_settings(TRIMLY_CODE_LENGTH=1, TRIMLY_CODE_GEN_MAX_RETRIES=1000)
-    def test_keyspace_exhausted_returns_service_unavailable(self):
-        for i in range(62):
-            shorten(f'https://example.com/{i}')
-        self.assertEqual(ShortURL.objects.count(), 62)
-
+    @mock.patch('core.views.shorten', side_effect=ShortCodeAllocationFailed)
+    def test_allocation_failure_returns_service_unavailable(self, shorten):
         response = self.client.post(
             reverse('shorten'),
             data={'url': 'https://example.com/no-room-left'},
@@ -53,6 +50,7 @@ class ShortenViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 503)
+        shorten.assert_called_once_with('https://example.com/no-room-left')
 
 
 class ShortenViewThrottleTests(TestCase):

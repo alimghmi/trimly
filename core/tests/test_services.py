@@ -1,9 +1,12 @@
+from unittest import mock
+
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 
-from core.exceptions import ShortCodeExhausted
+from core.exceptions import ShortCodeAllocationFailed
 from core.models import ShortURL
 from core.services import resolve, shorten
+from core.shortcodes import ALPHABET
 
 
 class ShortenTests(TestCase):
@@ -13,25 +16,31 @@ class ShortenTests(TestCase):
         self.assertEqual(result.long_url, 'https://example.com')
         self.assertTrue(ShortURL.objects.filter(code=result.code).exists())
 
-    @override_settings(TRIMLY_CODE_LENGTH=1, TRIMLY_CODE_GEN_MAX_RETRIES=1000)
-    def test_retries_on_collision_and_still_succeeds(self):
-        for i in range(61):
-            shorten(f'https://example.com/{i}')
+    @override_settings(TRIMLY_CODE_LENGTH=1, TRIMLY_CODE_GEN_MAX_RETRIES=2)
+    @mock.patch('core.services.generate', side_effect=['0', 'Z'])
+    def test_retries_on_collision_and_still_succeeds(self, generate):
+        ShortURL.objects.bulk_create(
+            ShortURL(code=code, long_url=f'https://example.com/{code}') for code in ALPHABET[:-1]
+        )
         self.assertEqual(ShortURL.objects.count(), 61)
 
         result = shorten('https://example.com/one-more')
 
         self.assertEqual(ShortURL.objects.count(), 62)
-        self.assertEqual(len(result.code), 1)
+        self.assertEqual(result.code, 'Z')
+        self.assertEqual(generate.call_count, 2)
 
-    @override_settings(TRIMLY_CODE_LENGTH=1, TRIMLY_CODE_GEN_MAX_RETRIES=1000)
-    def test_raises_when_keyspace_is_completely_full(self):
-        for i in range(62):
-            shorten(f'https://example.com/{i}')
+    @override_settings(TRIMLY_CODE_LENGTH=1, TRIMLY_CODE_GEN_MAX_RETRIES=3)
+    @mock.patch('core.services.generate', return_value='0')
+    def test_raises_after_retry_budget_when_keyspace_is_full(self, generate):
+        ShortURL.objects.bulk_create(
+            ShortURL(code=code, long_url=f'https://example.com/{code}') for code in ALPHABET
+        )
         self.assertEqual(ShortURL.objects.count(), 62)
 
-        with self.assertRaises(ShortCodeExhausted):
+        with self.assertRaises(ShortCodeAllocationFailed):
             shorten('https://example.com/no-room-left')
+        self.assertEqual(generate.call_count, 3)
 
 
 class ResolveTests(TestCase):
@@ -66,4 +75,23 @@ class CacheBehaviorTests(TestCase):
             resolve('qqqqq')
 
         with self.assertNumQueries(0), self.assertRaises(ShortURL.DoesNotExist):
+            resolve('qqqqq')
+
+    def test_cache_failure_falls_back_to_database(self):
+        url = 'https://example.com/cache-unavailable'
+        code = shorten(url).code
+
+        with (
+            mock.patch('core.services.cache.get', side_effect=ConnectionError),
+            mock.patch('core.services.cache.set', side_effect=ConnectionError),
+            self.assertLogs('core.services', level='WARNING'),
+        ):
+            self.assertEqual(resolve(code), url)
+
+    def test_cache_write_failure_does_not_mask_missing_code(self):
+        with (
+            mock.patch('core.services.cache.set', side_effect=ConnectionError),
+            self.assertLogs('core.services', level='WARNING'),
+            self.assertRaises(ShortURL.DoesNotExist),
+        ):
             resolve('qqqqq')

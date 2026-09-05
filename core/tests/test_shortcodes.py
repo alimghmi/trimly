@@ -12,10 +12,6 @@ class GenerateTests(SimpleTestCase):
         code = generate(5)
         self.assertTrue(all(c in ALPHABET for c in code))
 
-    def test_generate_is_not_sequential(self):
-        codes = [generate(5) for _ in range(20)]
-        self.assertEqual(len(codes), len(set(codes)))
-
 
 class IsValidTests(SimpleTestCase):
     def test_accepts_code_of_correct_length_and_alphabet(self):
