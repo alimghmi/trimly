@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -177,6 +179,9 @@ REST_FRAMEWORK = {
 
 
 TRIMLY_CODE_LENGTH = int(os.environ.get('TRIMLY_CODE_LENGTH', '5'))
+
+if not 1 <= TRIMLY_CODE_LENGTH <= 5:
+    raise ImproperlyConfigured('TRIMLY_CODE_LENGTH must be between 1 and 5.')
 
 TRIMLY_CODE_GEN_MAX_RETRIES = int(os.environ.get('TRIMLY_CODE_GEN_MAX_RETRIES', '5'))
 
