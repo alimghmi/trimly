@@ -1,0 +1,99 @@
+name: trimly
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  cache:
+    image: redis:8-alpine
+    restart: always
+    command:
+      ['redis-server', '--save', '', '--appendonly', 'no', '--maxmemory', '512mb', '--maxmemory-policy', 'allkeys-lru']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 640m
+
+  migrate:
+    build:
+      context: .
+      target: runtime
+    restart: 'no'
+    environment: &django_env
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: '0'
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?set DJANGO_ALLOWED_HOSTS}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-1}
+      DJANGO_HSTS_SECONDS: ${DJANGO_HSTS_SECONDS:-31536000}
+      DJANGO_HSTS_PRELOAD: ${DJANGO_HSTS_PRELOAD:-0}
+      DJANGO_LOG_LEVEL: ${DJANGO_LOG_LEVEL:-INFO}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://cache:6379/0
+      TRIMLY_BASE_URL: ${TRIMLY_BASE_URL:?set TRIMLY_BASE_URL}
+      TRIMLY_WRITE_RATE: ${TRIMLY_WRITE_RATE:-60/min}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ['python', 'manage.py', 'migrate', '--noinput']
+
+  web:
+    build:
+      context: .
+      target: runtime
+    restart: always
+    environment: *django_env
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${WEB_PORT:-8000}:8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      replicas: ${WEB_REPLICAS:-1}
+      resources:
+        limits:
+          memory: 1g
+    command:
+      ['gunicorn', 'config.wsgi:application',
+       '--bind', '0.0.0.0:8000',
+       '--workers', '${GUNICORN_WORKERS:-3}',
+       '--timeout', '30',
+       '--access-logfile', '-',
+       '--error-logfile', '-']
+
+volumes:
+  pgdata:

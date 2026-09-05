@@ -1,0 +1,61 @@
+name: trimly
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-trimly}
+      POSTGRES_USER: ${POSTGRES_USER:-trimly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trimly}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-trimly} -d ${POSTGRES_DB:-trimly}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - '${POSTGRES_PORT_HOST:-5432}:5432'
+
+  cache:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
+      POSTGRES_DB: ${POSTGRES_DB:-trimly}
+      POSTGRES_USER: ${POSTGRES_USER:-trimly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trimly}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://cache:6379/0
+      TRIMLY_BASE_URL: ${TRIMLY_BASE_URL:-http://localhost:8000}
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    ports:
+      - '${WEB_PORT:-8000}:8000'
+    volumes:
+      - .:/app
+      - /app/.venv
+    command:
+      ['python', 'manage.py', 'runserver', '0.0.0.0:8000']
+
+volumes:
+  pgdata:

@@ -1,0 +1,48 @@
+[project]
+name = "trimly"
+version = "0.1.0"
+description = ""
+requires-python = ">=3.12"
+dependencies = [
+    "django==5.2.17",
+    "djangorestframework==3.18.0",
+    "gunicorn==26.2.0",
+    "psycopg[binary]>=3.3.5",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "core/migrations", "manage.py", "config/wsgi.py", "config/asgi.py", "config/urls.py"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import ordering)
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "DJ",   # flake8-django
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "E501",  # line length is enforced by the formatter, not the linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"config/settings.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "core"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
