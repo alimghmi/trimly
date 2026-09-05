@@ -1,2 +1,2 @@
-class ShortCodeExhausted(RuntimeError):
-    """Raised when no free code was found within the retry budget."""
+class ShortCodeAllocationFailed(RuntimeError):
+    """Raised when a unique code cannot be allocated within the retry budget."""
