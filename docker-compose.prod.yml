@@ -44,9 +44,6 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
       DJANGO_DEBUG: '0'
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?set DJANGO_ALLOWED_HOSTS}
-      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-1}
-      DJANGO_HSTS_SECONDS: ${DJANGO_HSTS_SECONDS:-31536000}
-      DJANGO_HSTS_PRELOAD: ${DJANGO_HSTS_PRELOAD:-0}
       DJANGO_LOG_LEVEL: ${DJANGO_LOG_LEVEL:-INFO}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
@@ -77,7 +74,7 @@ services:
     ports:
       - '${WEB_PORT:-8000}:8000'
     healthcheck:
-      test: ['CMD', 'python', '-c', "import urllib.request,sys; request=urllib.request.Request('http://127.0.0.1:8000/api/health', headers={'X-Forwarded-Proto':'https'}); sys.exit(0 if urllib.request.urlopen(request, timeout=3).status == 200 else 1)"]
+      test: ['CMD', 'python', '-c', "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
       interval: 15s
       timeout: 5s
       retries: 5

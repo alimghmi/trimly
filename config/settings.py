@@ -183,7 +183,10 @@ TRIMLY_CODE_LENGTH = int(os.environ.get('TRIMLY_CODE_LENGTH', '5'))
 if not 1 <= TRIMLY_CODE_LENGTH <= 5:
     raise ImproperlyConfigured('TRIMLY_CODE_LENGTH must be between 1 and 5.')
 
-TRIMLY_CODE_GEN_MAX_RETRIES = int(os.environ.get('TRIMLY_CODE_GEN_MAX_RETRIES', '5'))
+TRIMLY_CODE_GEN_MAX_RETRIES = int(os.environ.get('TRIMLY_CODE_GEN_MAX_RETRIES', '20'))
+
+if TRIMLY_CODE_GEN_MAX_RETRIES < 1:
+    raise ImproperlyConfigured('TRIMLY_CODE_GEN_MAX_RETRIES must be at least 1.')
 
 TRIMLY_BASE_URL = os.environ.get('TRIMLY_BASE_URL', 'http://localhost:8000')
 
@@ -192,16 +195,6 @@ TRIMLY_ALLOWED_SCHEMES = _env_list('TRIMLY_ALLOWED_SCHEMES', 'http,https')
 TRIMLY_CACHE_TTL = int(os.environ.get('TRIMLY_CACHE_TTL', '86400'))
 
 TRIMLY_NOT_FOUND_CACHE_TTL = int(os.environ.get('TRIMLY_NOT_FOUND_CACHE_TTL', '60'))
-
-
-if not DEBUG:
-    SECURE_SSL_REDIRECT = _env_bool('DJANGO_SECURE_SSL_REDIRECT', default=True)
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '31536000'))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = _env_bool('DJANGO_HSTS_PRELOAD', default=False)
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 LOGGING = {

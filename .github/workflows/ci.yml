@@ -82,8 +82,6 @@ jobs:
         run: uv run python manage.py makemigrations --check --dry-run
 
       - name: Run tests
-        env:
-          DJANGO_SECURE_SSL_REDIRECT: '0'
         run: uv run python manage.py test --verbosity 2 --shuffle
 
   docker:
