@@ -178,6 +178,8 @@ REST_FRAMEWORK = {
 
 TRIMLY_CODE_LENGTH = int(os.environ.get('TRIMLY_CODE_LENGTH', '5'))
 
+TRIMLY_CODE_GEN_MAX_RETRIES = int(os.environ.get('TRIMLY_CODE_GEN_MAX_RETRIES', '5'))
+
 TRIMLY_BASE_URL = os.environ.get('TRIMLY_BASE_URL', 'http://localhost:8000')
 
 TRIMLY_ALLOWED_SCHEMES = _env_list('TRIMLY_ALLOWED_SCHEMES', 'http,https')
