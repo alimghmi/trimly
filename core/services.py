@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 
 from core.models import ShortURL
-from core.shortcodes import ShortCodeExhausted, generate
+from core.shortcodes import ShortCodeExhausted, generate, is_valid
 
 
 def shorten(url: str) -> ShortURL:
@@ -22,4 +22,7 @@ def shorten(url: str) -> ShortURL:
 
 
 def resolve(code: str) -> str:
+    if not is_valid(code, settings.TRIMLY_CODE_LENGTH):
+        raise ValueError('Provided code is not valid.')
+
     return ShortURL.objects.get(code=code).long_url
