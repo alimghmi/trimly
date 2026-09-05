@@ -16,7 +16,7 @@ def _cache_get(key: str):
     try:
         return cache.get(key)
     except Exception:
-        logger.warning('Cache read failed. Falling back to the database.', exc_info=True)
+        logger.warning('Cache read failed. Falling back to the database.')
         return None
 
 
@@ -24,7 +24,7 @@ def _cache_set(key: str, value: str, timeout: int) -> None:
     try:
         cache.set(key, value, timeout=timeout)
     except Exception:
-        logger.warning('Cache write failed. Continuing without caching.', exc_info=True)
+        logger.warning('Cache write failed. Continuing without caching.')
 
 
 def shorten(url: str) -> ShortURL:

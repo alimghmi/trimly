@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from redis.backoff import NoBackoff
+from redis.retry import Retry
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -114,6 +116,11 @@ if os.environ.get('REDIS_URL'):
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': os.environ['REDIS_URL'],
+            'OPTIONS': {
+                'socket_connect_timeout': 0.25,
+                'socket_timeout': 0.25,
+                'retry': Retry(NoBackoff(), 0),
+            },
         }
     }
 else:
