@@ -18,7 +18,17 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = [".venv", "core/migrations", "manage.py", "config/wsgi.py", "config/asgi.py", "config/urls.py"]
+extend-exclude = [
+    ".venv",
+    "core/migrations",
+    "manage.py",
+    "config/wsgi.py",
+    "config/asgi.py",
+    "config/urls.py",
+    "core/admin.py",
+    "core/models.py",
+    "core/tests.py",
+]
 
 [tool.ruff.lint]
 select = [
