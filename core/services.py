@@ -2,8 +2,9 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 
+from core.exceptions import ShortCodeExhausted
 from core.models import ShortURL
-from core.shortcodes import ShortCodeExhausted, generate, is_valid
+from core.shortcodes import generate, is_valid
 
 _NOT_FOUND = '__trimly_not_found__'
 

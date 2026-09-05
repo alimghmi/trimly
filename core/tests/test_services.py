@@ -1,9 +1,9 @@
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 
+from core.exceptions import ShortCodeExhausted
 from core.models import ShortURL
 from core.services import resolve, shorten
-from core.shortcodes import ShortCodeExhausted
 
 
 class ShortenTests(TestCase):

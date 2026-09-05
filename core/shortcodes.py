@@ -4,10 +4,6 @@ ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 ALPHABET_SET = set(ALPHABET)
 
 
-class ShortCodeExhausted(RuntimeError):
-    """Raised when no free code was found within the retry budget."""
-
-
 def generate(length: int) -> str:
     return ''.join(secrets.choice(ALPHABET) for _ in range(length))
 

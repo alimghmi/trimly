@@ -1,5 +1,9 @@
-from django.test import TestCase
+from unittest import mock
+
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from rest_framework.throttling import AnonRateThrottle
 
 from core.models import ShortURL
 from core.services import shorten
@@ -35,6 +39,51 @@ class ShortenViewTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('url', response.json())
+
+    @override_settings(TRIMLY_CODE_LENGTH=1, TRIMLY_CODE_GEN_MAX_RETRIES=1000)
+    def test_keyspace_exhausted_returns_service_unavailable(self):
+        for i in range(62):
+            shorten(f'https://example.com/{i}')
+        self.assertEqual(ShortURL.objects.count(), 62)
+
+        response = self.client.post(
+            reverse('shorten'),
+            data={'url': 'https://example.com/no-room-left'},
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 503)
+
+
+class ShortenViewThrottleTests(TestCase):
+    def setUp(self):
+        # LocMemCache (DRF's throttle store) persists process-wide across the
+        # whole test run and Django's TestCase does not clear it between
+        # tests - without this, request counts left over from another test
+        # could make this test pass or fail for the wrong reason.
+        cache.clear()
+
+    def test_exceeding_write_rate_returns_too_many_requests(self):
+        # AnonRateThrottle.THROTTLE_RATES is bound to the DRF settings dict at
+        # class-body evaluation (import time), so overriding
+        # settings.REST_FRAMEWORK at test time does not change it - the class
+        # attribute has to be patched directly to take effect here.
+        with mock.patch.object(AnonRateThrottle, 'THROTTLE_RATES', {'anon': '2/min'}):
+            for _ in range(2):
+                response = self.client.post(
+                    reverse('shorten'),
+                    data={'url': 'https://example.com/within-limit'},
+                    content_type='application/json',
+                )
+                self.assertEqual(response.status_code, 201)
+
+            response = self.client.post(
+                reverse('shorten'),
+                data={'url': 'https://example.com/over-limit'},
+                content_type='application/json',
+            )
+
+        self.assertEqual(response.status_code, 429)
 
 
 class RedirectViewTests(TestCase):
