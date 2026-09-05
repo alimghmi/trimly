@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from core.models import ShortURL
@@ -42,3 +43,27 @@ class ResolveTests(TestCase):
     def test_resolve_nonexistent_url_raise(self):
         with self.assertRaises(ShortURL.DoesNotExist):
             resolve('zzZzz')
+
+
+class CacheBehaviorTests(TestCase):
+    def setUp(self):
+        # LocMemCache persists process-wide across the whole test run, and
+        # Django's TestCase does not clear it between tests - without this,
+        # a stale entry from an earlier test could mask a real bug here.
+        cache.clear()
+
+    def test_second_resolve_of_same_code_is_served_from_cache(self):
+        code = shorten('https://example.com/cache-me').code
+
+        with self.assertNumQueries(1):
+            resolve(code)
+
+        with self.assertNumQueries(0):
+            resolve(code)
+
+    def test_second_resolve_of_missing_code_is_served_from_negative_cache(self):
+        with self.assertNumQueries(1), self.assertRaises(ShortURL.DoesNotExist):
+            resolve('qqqqq')
+
+        with self.assertNumQueries(0), self.assertRaises(ShortURL.DoesNotExist):
+            resolve('qqqqq')
