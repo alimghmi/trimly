@@ -56,6 +56,38 @@ You'll get back something like:
 
 Visit `short_url` in a browser and you'll land on the original page.
 
+## Design choices
+
+Django and Django REST Framework provide URL validation, database migrations,
+and an admin interface without much extra code.
+
+Short codes contain five characters chosen from `0-9`, `a-z`, and `A-Z`. This
+gives 916,132,832 possible codes. Codes are generated with Python's `secrets`
+module, which makes them difficult to guess in sequence. The code is the
+database primary key, so PostgreSQL prevents duplicates when several requests
+arrive at the same time.
+
+Another option was to encode an auto-incrementing database ID and decode it
+when a short link is opened. That would avoid collisions, but the codes would
+be predictable and easier to enumerate. Encrypting or permuting the ID could
+hide the sequence, but it would add a permanent secret key and more complexity.
+Losing or changing that key could break existing links, and encryption would
+not increase the five-character keyspace. Random generation keeps the design
+simple, does not reveal creation order, and lets PostgreSQL handle the rare
+collision safely.
+
+By default, code generation stops after 20 attempts to keep request time
+bounded. If every attempt collides, the API returns `503` and the client can
+try again. This does not mean that every possible code has been used.
+
+PostgreSQL is the permanent source of truth. Redis caches successful lookups
+and missing codes to reduce database work. If Redis is unavailable, redirects
+fall back to PostgreSQL.
+
+The web application does not store local state, so several web instances can
+share the same PostgreSQL database and Redis cache. Database backups are needed
+to keep shortened links permanently.
+
 ## Running tests
 
 ```bash
