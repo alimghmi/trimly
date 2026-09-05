@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.conf import settings
 from django.http import Http404
 from django.shortcuts import redirect
@@ -11,6 +13,8 @@ from core.services import resolve, shorten
 
 
 class HealthCheck(APIView):
+    throttle_classes: ClassVar = []
+
     def get(self, request):
         return Response({'status': 'ok'}, status=status.HTTP_200_OK)
 
