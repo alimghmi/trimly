@@ -186,6 +186,8 @@ TRIMLY_ALLOWED_SCHEMES = _env_list('TRIMLY_ALLOWED_SCHEMES', 'http,https')
 
 TRIMLY_CACHE_TTL = int(os.environ.get('TRIMLY_CACHE_TTL', '86400'))
 
+TRIMLY_NOT_FOUND_CACHE_TTL = int(os.environ.get('TRIMLY_NOT_FOUND_CACHE_TTL', '60'))
+
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = _env_bool('DJANGO_SECURE_SSL_REDIRECT', default=True)
