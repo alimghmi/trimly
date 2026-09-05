@@ -94,6 +94,19 @@ to keep shortened links permanently.
 uv run python manage.py test
 ```
 
+## Running a benchmark
+
+Start the service, then run the redirect benchmark:
+
+```bash
+uv run python scripts/benchmark.py
+```
+
+Use `--operation shorten` or `--operation both` to include the write path. The
+shorten endpoint is rate-limited, so increase `TRIMLY_WRITE_RATE` when running a
+larger write benchmark. Run `uv run python scripts/benchmark.py --help` to see
+the concurrency, request count, warmup, and target options.
+
 ## Configuration
 
 All settings are read from environment variables. See `.env.example` for

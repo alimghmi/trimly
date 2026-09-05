@@ -6,6 +6,7 @@ __pycache__/
 .github/
 db.sqlite3
 docs/
+scripts/
 *.md
 .env
 .env.*
