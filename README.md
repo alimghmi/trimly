@@ -103,9 +103,23 @@ uv run python scripts/benchmark.py
 ```
 
 Use `--operation shorten` or `--operation both` to include the write path. The
-shorten endpoint is rate-limited, so increase `TRIMLY_WRITE_RATE` when running a
-larger write benchmark. Run `uv run python scripts/benchmark.py --help` to see
-the concurrency, request count, warmup, and target options.
+shorten endpoint is rate-limited. To measure write capacity with Docker, restart
+the web service with an explicit higher limit:
+
+```bash
+TRIMLY_WRITE_RATE=10000/min docker compose up -d --force-recreate web
+uv run python scripts/benchmark.py --operation both --requests 500 --concurrency 50
+```
+
+Restore the normal `60/min` limit afterward:
+
+```bash
+docker compose up -d --force-recreate web
+```
+
+Write benchmarks create permanent short links. Use a disposable database for
+large runs. Run `uv run python scripts/benchmark.py --help` to see the
+concurrency, request count, warmup, and target options.
 
 ## Configuration
 

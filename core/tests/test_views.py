@@ -52,6 +52,23 @@ class ShortenViewTests(TestCase):
         self.assertEqual(response.status_code, 503)
         shorten.assert_called_once_with('https://example.com/no-room-left')
 
+    @mock.patch('core.views.shorten', side_effect=RuntimeError('unexpected failure'))
+    def test_unhandled_error_has_request_id_and_structured_exception_log(self, shorten):
+        self.client.raise_request_exception = False
+
+        with self.assertLogs('trimly.request', level='ERROR') as captured:
+            response = self.client.post(
+                reverse('shorten'),
+                data={'url': 'https://example.com/private-target'},
+                content_type='application/json',
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertIn('X-Request-ID', response)
+        self.assertEqual(captured.records[0].event, 'request_failed')
+        self.assertIsNotNone(captured.records[0].exc_info)
+        self.assertNotIn('private-target', captured.output[0])
+
 
 class ShortenViewThrottleTests(TestCase):
     def setUp(self):

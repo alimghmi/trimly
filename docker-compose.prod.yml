@@ -45,6 +45,7 @@ services:
       DJANGO_DEBUG: '0'
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?set DJANGO_ALLOWED_HOSTS}
       DJANGO_LOG_LEVEL: ${DJANGO_LOG_LEVEL:-INFO}
+      DJANGO_LOG_FORMAT: ${DJANGO_LOG_FORMAT:-}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
@@ -89,7 +90,6 @@ services:
        '--bind', '0.0.0.0:8000',
        '--workers', '${GUNICORN_WORKERS:-3}',
        '--timeout', '30',
-       '--access-logfile', '-',
        '--error-logfile', '-']
 
 volumes:

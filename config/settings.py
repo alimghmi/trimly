@@ -17,6 +17,8 @@ from django.core.exceptions import ImproperlyConfigured
 from redis.backoff import NoBackoff
 from redis.retry import Retry
 
+from config.logging import select_log_format
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -55,6 +57,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'core.middleware.RequestLoggingMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -204,12 +207,33 @@ TRIMLY_CACHE_TTL = int(os.environ.get('TRIMLY_CACHE_TTL', '86400'))
 TRIMLY_NOT_FOUND_CACHE_TTL = int(os.environ.get('TRIMLY_NOT_FOUND_CACHE_TTL', '60'))
 
 
+try:
+    LOG_FORMAT = select_log_format(
+        debug=DEBUG,
+        configured=os.environ.get('DJANGO_LOG_FORMAT'),
+    )
+except ValueError as exc:
+    raise ImproperlyConfigured(str(exc)) from exc
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {'simple': {'format': '{levelname} {asctime} {name} {message}', 'style': '{'}},
+    'formatters': {
+        'json': {'()': 'config.logging.JsonFormatter'},
+        'text': {
+            '()': 'config.logging.TextFormatter',
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
-        'console': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
+        'console': {'class': 'logging.StreamHandler', 'formatter': LOG_FORMAT},
+        'null': {'class': 'logging.NullHandler'},
     },
     'root': {'handlers': ['console'], 'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO')},
+    'loggers': {
+        'django.request': {'handlers': ['null'], 'propagate': False},
+        'django.server': {'handlers': ['null'], 'propagate': False},
+    },
 }

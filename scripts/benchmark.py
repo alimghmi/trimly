@@ -12,6 +12,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib.parse import quote, urlsplit
 
+RATE_LIMIT_GUIDANCE = (
+    'The shorten endpoint rate limit was reached. For a local Docker load test, run:\n'
+    '  TRIMLY_WRITE_RATE=10000/min docker compose up -d --force-recreate web\n'
+    'Then run the benchmark again. Restore the default afterward with:\n'
+    '  docker compose up -d --force-recreate web'
+)
+
 
 @dataclass(frozen=True)
 class RequestResult:
@@ -139,6 +146,9 @@ def run_benchmark(
     print(f'    p99:     {percentile(latencies_ms, 0.99):.2f} ms')
     print(f'    maximum: {latencies_ms[-1]:.2f} ms')
 
+    if statuses[429]:
+        print(f'\n{RATE_LIMIT_GUIDANCE}', file=sys.stderr)
+
     return successful == request_count
 
 
@@ -203,6 +213,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     succeeded = True
 
+    code = args.code
+    if args.operation in {'redirect', 'both'} and code is None:
+        try:
+            code = create_short_code(client, args.target_url)
+        except (RuntimeError, json.JSONDecodeError) as exc:
+            print(f'error: {exc}', file=sys.stderr)
+            if 'HTTP 429' in str(exc):
+                print(f'\n{RATE_LIMIT_GUIDANCE}', file=sys.stderr)
+            return 1
+
     if args.operation in {'shorten', 'both'}:
         payload = json.dumps({'url': args.target_url}).encode()
         succeeded &= run_benchmark(
@@ -215,12 +235,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     if args.operation in {'redirect', 'both'}:
-        try:
-            code = args.code or create_short_code(client, args.target_url)
-        except (RuntimeError, json.JSONDecodeError) as exc:
-            print(f'error: {exc}', file=sys.stderr)
-            return 1
-
+        assert code is not None
         succeeded &= run_benchmark(
             'Redirect benchmark',
             lambda _: client.request('GET', f'/{quote(code, safe="")}'),

@@ -15,16 +15,32 @@ logger = logging.getLogger(__name__)
 def _cache_get(key: str):
     try:
         return cache.get(key)
-    except Exception:
-        logger.warning('Cache read failed. Falling back to the database.')
+    except Exception as exc:
+        logger.warning(
+            'Cache read failed. Falling back to the database.',
+            extra={
+                'event': 'cache_operation_failed',
+                'cache_operation': 'read',
+                'fallback': 'database',
+                'exception_type': type(exc).__name__,
+            },
+        )
         return None
 
 
 def _cache_set(key: str, value: str, timeout: int) -> None:
     try:
         cache.set(key, value, timeout=timeout)
-    except Exception:
-        logger.warning('Cache write failed. Continuing without caching.')
+    except Exception as exc:
+        logger.warning(
+            'Cache write failed. Continuing without caching.',
+            extra={
+                'event': 'cache_operation_failed',
+                'cache_operation': 'write',
+                'fallback': 'continue_without_cache',
+                'exception_type': type(exc).__name__,
+            },
+        )
 
 
 def shorten(url: str) -> ShortURL:
@@ -38,6 +54,14 @@ def shorten(url: str) -> ShortURL:
         else:
             break
     else:
+        logger.error(
+            'Short code allocation attempts exhausted.',
+            extra={
+                'event': 'short_code_allocation_exhausted',
+                'attempts': settings.TRIMLY_CODE_GEN_MAX_RETRIES,
+                'code_length': settings.TRIMLY_CODE_LENGTH,
+            },
+        )
         raise ShortCodeAllocationFailed
 
     return short_url
